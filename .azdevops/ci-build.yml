@@ -11,6 +11,7 @@ variables:
   subscription: "autobots-azdo-connection"
   webAppName: "autobots-azdo"
   resourceGroup: "autobots-rg"
+  isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]
 
 stages:
   - stage: build
@@ -76,4 +77,23 @@ stages:
                     deployToSlotOrASE: true
                     ResourceGroupName: $(resourceGroup)
                     SlotName: "test"
+                    packageForLinux: "$(Agent.BuildDirectory)/linuxartifact/autobots.web.zip"
+
+  - stage: deployToProd
+    condition: and(succeeded(), eq(variables.isMain, 'true'))
+    dependsOn: deployToTest
+    jobs:
+      - deployment: webDeployToProd
+        displayName: Deploy To Prod Env
+        environment: autobotsProductionEnvironment
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureRmWebAppDeployment@4
+                  inputs:
+                    ConnectionType: "AzureRM"
+                    azureSubscription: $(subscription)
+                    appType: "webAppLinux"
+                    WebAppName: $(webAppName)
                     packageForLinux: "$(Agent.BuildDirectory)/linuxartifact/autobots.web.zip"
