@@ -8,37 +8,72 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
+  subscription: "autobots-azdo-connection"
+  webAppName: "autobots-azdo"
+  resourceGroup: "autobots-rg"
 
-steps:
-- task: DotNetCoreCLI@2
-  displayName: restore
-  inputs:
-    command: 'restore'
-    projects: '**/*.csproj'
+stages:
+  - stage: build
+    jobs:
+      - job: CI
+        steps:
+        - task: DotNetCoreCLI@2
+          displayName: restore
+          inputs:
+            command: 'restore'
+            projects: '**/*.csproj'
 
-- task: DotNetCoreCLI@2
-  displayName: build
-  inputs:
-    command: 'build'
-    projects: '**/*.csproj'
-    arguments: '-c $(buildConfiguration)'
+        - task: DotNetCoreCLI@2
+          displayName: build
+          inputs:
+            command: 'build'
+            projects: '**/*.csproj'
+            arguments: '-c $(buildConfiguration)'
 
-- task: DotNetCoreCLI@2
-  displayName: test
-  inputs:
-    command: 'test'
-    projects: '**/*test*/*csproj'
+        - task: DotNetCoreCLI@2
+          displayName: test
+          inputs:
+            command: 'test'
+            projects: '**/*test*/*csproj'
 
-- task: DotNetCoreCLI@2
-  displayName: publish
-  inputs:
-    command: 'publish'
-    publishWebProjects: true
-    arguments: '-c $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)'
-    workingDirectory: 'autobots.web'
+      - job: publish
+        dependsOn: CI
+        steps:
+        - task: DotNetCoreCLI@2
+          displayName: publish
+          inputs:
+            command: 'publish'
+            publishWebProjects: true
+            arguments: '-c $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)'
+            workingDirectory: 'autobots.web'
 
-- task: PublishPipelineArtifact@1
-  displayName: UploadToAzDO
-  inputs:
-    artifact: linuxartifact
-    targetPath: '$(Build.ArtifactStagingDirectory)'
+        - task: PublishPipelineArtifact@1
+          displayName: UploadToAzDO
+          inputs:
+            artifact: linuxartifact
+            targetPath: '$(Build.ArtifactStagingDirectory)'
+
+  - stage: deployToTest
+    jobs:
+      - deployment: DeployToTest
+        displayName: Deploy To Test Env
+        environment: autobotsTestEnvironment
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - bash: tree
+                  displayName: Where Am I
+                  workingDirectory: $(Agent.BuildDirectory)
+
+                - task: AzureRmWebAppDeployment@4
+                  displayName: Deploy App To Test
+                  inputs:
+                    ConnectionType: "AzureRM"
+                    azureSubscription: $(subscription)
+                    appType: "webAppLinux"
+                    WebAppName: $(webAppName)
+                    deployToSlotOrASE: true
+                    ResourceGroupName: $(resourceGroup)
+                    SlotName: "test"
+                    packageForLinux: "$(Agent.BuildDirectory)/linuxartifact/autobots.web.zip"
