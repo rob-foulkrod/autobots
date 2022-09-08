@@ -1,0 +1,9 @@
+For this demo to work, you will need to 
+1) Open the Modules Tab in your Automation Account
+2) Click 'Add Module'
+3) Click 'Browse the gallery'
+4) Click 'Browse from gallery' link
+5) Paste 'xWebAdministration'
+6) Click the xWebAdministration Module
+7) Click Select button
+8) Select the 5.1 in the Runtime version dropdown
