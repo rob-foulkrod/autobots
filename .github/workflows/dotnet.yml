@@ -24,3 +24,11 @@ jobs:
       run: dotnet build --no-restore
     - name: Test
       run: dotnet test --no-build --verbosity normal
+    - name: Publish
+      working-directory: autobots.web
+      run: dotnet publish -c release -o ../out
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: webapp
+        path: ./out
